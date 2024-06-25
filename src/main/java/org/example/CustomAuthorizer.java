@@ -6,6 +6,7 @@ import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
@@ -19,9 +20,9 @@ import java.util.Map;
 
 public class CustomAuthorizer implements RequestHandler<APIGatewayProxyRequestEvent, Map<String, Object>> {
 
-    private static final String COGNITO_TOKEN_URL = "https://your-cognito-domain/oauth2/token";
-    private static final String CLIENT_ID = "your-client-id";
-    private static final String CLIENT_SECRET = "your-client-secret";
+    private static final String COGNITO_TOKEN_URL = "https://sk-auth.auth.eu-west-2.amazoncognito.com/oauth2/token";
+    private static final String CLIENT_ID = "3k50udfb4thaslrd5tgi91im6b";
+    private static final String CLIENT_SECRET = "1eo0e404amgosdht99cdegs0rfd4orhlcbhqgbl42kq2jh6uuorp";
 
     @Override
     public Map<String, Object> handleRequest(APIGatewayProxyRequestEvent event, Context context) {
@@ -42,14 +43,18 @@ public class CustomAuthorizer implements RequestHandler<APIGatewayProxyRequestEv
                                    proxyContext.getHttpMethod(),
                                    "*");
         lambdaLogger.log("Arn..." + arn);
-        //String effect = "Allow";
         String effect = "Deny";
         try {
-            //JwtUtil.validateToken(token);
-            lambdaLogger.log("Success, effect..." + effect);
-            ctx.put("message", "Success");
+
+            String accessToken = getAccessToken();
+            lambdaLogger.log("access token..." + accessToken);
+            if (StringUtils.isNotBlank(accessToken)){
+                effect = "Allow";
+                lambdaLogger.log("Success, effect..." + effect);
+                ctx.put("message", "Success");
+            }
+
         } catch (Exception e) {
-            effect = "Deny";
             ctx.put("message", e.getMessage());
             lambdaLogger.log("Deny, Exception..." + e.getMessage());
         }
