@@ -15,6 +15,7 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
 
 import java.io.IOException;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -45,8 +46,32 @@ public class CustomAuthorizer implements RequestHandler<APIGatewayProxyRequestEv
         lambdaLogger.log("Arn..." + arn);
         String effect = "Deny";
         try {
+            // Extract authorization header
+            String authorizationHeader = event.getHeaders().get("Authorization");
 
-            String accessToken = getAccessToken();
+            // Check if header is present and starts with "Basic"
+            if (authorizationHeader == null || !authorizationHeader.startsWith("Basic ")) {
+                lambdaLogger.log("Missing or invalid Authorization header");
+            }
+
+            // Decode Base64 encoded credentials
+            String decodedCredentials = new String(Base64.getDecoder().decode(authorizationHeader.substring(6)));
+
+            // Split credentials into username and password (client ID and secret)
+            String[] credentials = decodedCredentials.split(":");
+            if (credentials.length != 2) {
+                lambdaLogger.log("Invalid Authorization header format");
+            }
+
+//            String providedClientId = credentials[0];
+//            String providedClientSecret = credentials[1];
+//
+//            // Validate client credentials against configured ones
+//            if (!providedClientId.equals(clientId) || !providedClientSecret.equals(clientSecret)) {
+//                return new RequestContext("Unauthorized", "Invalid client credentials");
+//            }
+
+            String accessToken = getAccessToken(authorizationHeader);
             lambdaLogger.log("access token..." + accessToken);
             if (StringUtils.isNotBlank(accessToken)){
                 effect = "Allow";
@@ -65,12 +90,12 @@ public class CustomAuthorizer implements RequestHandler<APIGatewayProxyRequestEv
         return stringObjectMap;
     }
 
-    private String getAccessToken() {
+    private String getAccessToken(String authorization) {
         CloseableHttpClient httpClient = HttpClients.createDefault();
         HttpPost post = new HttpPost(COGNITO_TOKEN_URL);
 
         post.setHeader("Content-Type", "application/x-www-form-urlencoded");
-        post.setHeader("Authorization", "Basic " + encodeBase64(CLIENT_ID + ":" + CLIENT_SECRET));
+        post.setHeader("Authorization", authorization);
 
         try {
             StringEntity entity = new StringEntity("grant_type=client_credentials");
